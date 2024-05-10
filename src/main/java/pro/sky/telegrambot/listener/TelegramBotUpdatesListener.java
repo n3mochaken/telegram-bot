@@ -7,6 +7,7 @@ import com.pengrad.telegrambot.request.SendMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pro.sky.telegrambot.model.NotificationTask;
 import pro.sky.telegrambot.repositoryes.NotificationTaskRepository;
@@ -66,8 +67,25 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
 
             notificationTaskRepository.save(notificationTask);
         } else {
+            logger.info(" ");
             System.out.println("cheto ne poshlo");
         }
+    }
+
+    @Scheduled(cron = "0 0/1 * * * *")
+    public void sendNotifications() {
+        logger.info("Starting scheduled task: Sending notifications.");
+
+        LocalDateTime currentMinute = LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+        List<NotificationTask> tasksToSend = notificationTaskRepository.findByNotificationDateTime(currentMinute);
+
+        for (NotificationTask task : tasksToSend) {
+            long chatId = task.getChatId();
+            String messageText = task.getNotificationText();
+            telegramBot.execute(new SendMessage(chatId, messageText));
+            logger.info("Notification sent to chat ID {}: {}", chatId, messageText);
+        }
+        logger.info("Scheduled task: Sending notifications completed.");
     }
 }
 
