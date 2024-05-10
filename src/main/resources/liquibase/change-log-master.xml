@@ -3,6 +3,7 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
+
     <changeSet id="create_general_table" author="Nikita Surzhikov">
         <createTable tableName="General_Table">
             <column name="id" type="BIGINT">
