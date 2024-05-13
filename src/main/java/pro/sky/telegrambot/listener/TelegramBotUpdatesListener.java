@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import pro.sky.telegrambot.exceptions.IncorrectMessageException;
 import pro.sky.telegrambot.model.NotificationTask;
 import pro.sky.telegrambot.repositoryes.NotificationTaskRepository;
 
@@ -18,6 +19,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static pro.sky.telegrambot.util.CommandConstants.*;
 
 @Service
 public class TelegramBotUpdatesListener implements UpdatesListener {
@@ -36,22 +39,44 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
     }
 
     @Override
-    public int process(List<Update> updates) {
+    public int process(List<Update> updates) throws IncorrectMessageException {
+
         updates.forEach(update -> {
-            logger.info("Processing update: {}", update);
-            if (update.message() != null && update.message().text() != null) {
-                if (update.message().text().equals("/start")) {
+
+            logger.info("Апдейт запущен, данные: {}", update);
+
+
+                if (update.message() != null && update.message().text() != null) {
+                    String messageText = update.message().text();
                     long chatId = update.message().chat().id();
-                    telegramBot.execute(new SendMessage(chatId, "Привет! Я ТГ бот."));
-                } else {
-                    processIncomingMessage(update.message().chat().id(), update.message().text());
+
+                    switch (messageText){
+                        case START_CMD:
+                            logger.info(START_CMD + " " + LocalDateTime.now());
+                        telegramBot.execute(new SendMessage(chatId, WELCOME + update.message().from().username() + "!"));
+                        telegramBot.execute(new SendMessage(chatId, HELP_MSG));
+                        break;
+                        case HELP_CMD:
+                            logger.info(HELP_MSG + " " + LocalDateTime.now());
+                            telegramBot.execute(new SendMessage(chatId, HELP_MSG));
+                            break;
+                        default:
+                            try {
+                                parseIncomingMessage(update.message().chat().id(), messageText);
+                        } catch (IncorrectMessageException e) {
+                            telegramBot.execute(new SendMessage(chatId, INVALID_MSG));
+                        }
+                    }
+
                 }
-            }
+
         });
+
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
     }
 
-    public void processIncomingMessage(Long chatId, String message) {
+    public void parseIncomingMessage(Long chatId, String message)  throws IncorrectMessageException {
+        logger.info("Запущен метод преобразования сообщения.");
         Pattern pattern = Pattern.compile("([0-9.:/\\s]{16})(\\s)([\\W]+)");
         Matcher matcher = pattern.matcher(message);
         if (matcher.find()) {
@@ -64,17 +89,19 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             notificationTask.setChatId(chatId);
             notificationTask.setNotificationDateTime(dateTime);
             notificationTask.setNotificationText(reminderText);
+            telegramBot.execute(new SendMessage(chatId, "Ваше напоминание \"" + reminderText + "\" принято! Пришлю Вам это сообщение в указанное время - " + dateTime));
+            logger.info("Метод преобразования сообщения закончил работу.");
 
             notificationTaskRepository.save(notificationTask);
         } else {
-            logger.info(" ");
-            System.out.println("cheto ne poshlo");
+            logger.info("Пользователем ведена неверная дата.");
+            throw new IncorrectMessageException("Введена неверная дата.");
         }
     }
 
     @Scheduled(cron = "0 0/1 * * * *")
     public void sendNotifications() {
-        logger.info("Starting scheduled task: Sending notifications.");
+        logger.info("Запущен процесс происка отложенного напоминания.");
 
         LocalDateTime currentMinute = LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
         List<NotificationTask> tasksToSend = notificationTaskRepository.findByNotificationDateTime(currentMinute);
@@ -83,9 +110,9 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             long chatId = task.getChatId();
             String messageText = task.getNotificationText();
             telegramBot.execute(new SendMessage(chatId, messageText));
-            logger.info("Notification sent to chat ID {}: {}", chatId, messageText);
+            logger.info("Напоминание отправлено в чат ID {}: {}", chatId, messageText);
         }
-        logger.info("Scheduled task: Sending notifications completed.");
+        logger.info("Процес проверки отложенных сообщений заверщен.");
     }
 }
 
