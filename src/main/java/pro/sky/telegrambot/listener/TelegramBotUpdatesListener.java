@@ -77,7 +77,8 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
 
     public void parseIncomingMessage(Long chatId, String message)  throws IncorrectMessageException {
         logger.info("Запущен метод преобразования сообщения.");
-        Pattern pattern = Pattern.compile("([0-9.:/\\s]{16})(\\s)([\\W]+)");
+
+        Pattern pattern = Pattern.compile("([0-9\\.\\:\\s]{16})(\\s)([\\W+]+)"); //([0-9\.\:\s]{16})(\s)([\W+]+) //([0-9.:/\s]{16})(\s)([\W]+)
         Matcher matcher = pattern.matcher(message);
         if (matcher.find()) {
             String dateTimeString = matcher.group(1);
