@@ -44,9 +44,9 @@ class TelegramBotApplicationTests {
 	@Test
 	void should_parse_message_and_save_task() throws IncorrectMessageException {
 		// Устанавливаем ожидаемые значения
-		String message = "16.05.2024 22:22 String notificationText";
+		String message = "16.05.2024 22:22 Текст";
 		LocalDateTime expectedDateTime = LocalDateTime.parse("16.05.2024 22:22", DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
-		String expectedNotificationText = "String notificationText";
+		String expectedNotificationText = "Текст";
 
 		// Вызываем метод, который должен сохранить задачу
 		out.parseIncomingMessage(1L, message);
